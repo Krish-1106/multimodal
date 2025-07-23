@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Model files
+*.keras
+*.pt
+*.h5
+*.safetensors
+*.model
+imagecaption/
+blip-image-captioning-base/
+AbstractiveTextSummarization/
+
+# Media files
+*.mp4
+*.mp3
+*.wav
+*.jpg
+*.jpeg
+*.png
+*.gif
