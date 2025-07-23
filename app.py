@@ -77,10 +77,19 @@ MODEL_PATH = os.path.join(MODEL_DIRECTORY)
 PROCESSOR_PATH = os.path.join(MODEL_DIRECTORY)
 VIDEO_PATH = "video.mp4"
 AUDIO_PATH = "audio.mp3"
+# Get API keys from environment variables with fallback to demo mode
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 APP_PASSWORD = os.getenv("APP_PASSWORD")
 SENDER_MAIL_ID = os.getenv("SENDER_MAIL_ID")
+
+# Check if API keys are available
+DEMO_MODE = not all([GEMINI_API_KEY, OPENAI_API_KEY])
+if DEMO_MODE:
+    st.sidebar.warning("⚠️ Running in demo mode with limited functionality. Add API keys for full features.")
+    
+# Email functionality check
+EMAIL_AVAILABLE = all([APP_PASSWORD, SENDER_MAIL_ID])
 
 safety_settings = [
     {
@@ -136,9 +145,12 @@ def load_t5_models():
 
 
 def smart_tutor(question, previous_lectures, previous_questions):
+    if DEMO_MODE or not OPENAI_API_KEY:
+        return "I'm sorry, this feature requires an OpenAI API key. Please add your API key to use the Smart Tutor feature."
+        
     try:
         client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
+            api_key=OPENAI_API_KEY,
         )
 
         prompt = f"""
@@ -163,8 +175,10 @@ def smart_tutor(question, previous_lectures, previous_questions):
 
 
 def smart_tutor_gemini(question, previous_lectures, previous_questions):
+    if DEMO_MODE or not GEMINI_API_KEY:
+        return "I'm sorry, this feature requires a Google Gemini API key. Please add your API key to use the Smart Tutor feature."
+        
     try:
-
         genai.configure(api_key=GEMINI_API_KEY)
         # The Gemini 1.5 models are versatile and work with both text-only and multimodal prompts
         model = genai.GenerativeModel("gemini-1.5-pro-latest")
@@ -186,9 +200,13 @@ def smart_tutor_gemini(question, previous_lectures, previous_questions):
         return None
     
 def generate_search_terms(Highlights):
+    if DEMO_MODE or not OPENAI_API_KEY:
+        # Return some generic search terms in demo mode
+        return "education technology\nartificial intelligence\nlearning methods"
+        
     try:
         client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
+            api_key=OPENAI_API_KEY,
         )
         prompt = (
             """
@@ -218,9 +236,12 @@ search term 3
 
 
 def smart_highlights(session_transcription):
+    if DEMO_MODE or not OPENAI_API_KEY:
+        return "This is a demo highlight. The Smart Highlights feature requires an OpenAI API key for full functionality. Please add your API key to access this feature."
+        
     try:
         client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
+            api_key=OPENAI_API_KEY,
         )
 
         prompt = (
@@ -323,9 +344,12 @@ def summarize_t5(text):
 
 
 def summarize_genAi(text):
+    if DEMO_MODE or not OPENAI_API_KEY:
+        return "This is a demo summary. The GenAI summarization feature requires an OpenAI API key for full functionality."
+        
     try:
         client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
+            api_key=OPENAI_API_KEY,
         )
         prompt = f"""
 As a smart assistant, your task is to summarize the provided text. You should generate a concise and coherent summary of the text without losing its key points. The summary should be clear, concise, and relevant to the original text. You should also ensure that the summary is well-structured and easy to understand. The summary should be in your own words and should not include any verbatim text from the original text. You should also avoid adding any new information that is not present in the original text.
@@ -401,6 +425,9 @@ def get_summary(text_content, model):
 
 
 def get_details_from_image(image, question):
+    if DEMO_MODE or not GEMINI_API_KEY:
+        return "I'm sorry, image analysis requires a Google Gemini API key. Please add your API key to use this feature."
+        
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         try:
@@ -470,8 +497,11 @@ def get_transcript_from_url(url):
 
 
 def get_transcription_from_audio(file_path):
+    if DEMO_MODE or not OPENAI_API_KEY:
+        return "This is a demo transcription. Audio transcription requires an OpenAI API key for full functionality."
+        
     try:
-        client = OpenAI()
+        client = OpenAI(api_key=OPENAI_API_KEY)
         audio_file = open(file_path, "rb")
         transcription = client.audio.transcriptions.create(
             model="whisper-1", file=audio_file
@@ -497,6 +527,13 @@ def get_text_from_pdf(pdf_file):
 
 
 def get_details_from_pdf(pdf_path):
+    if DEMO_MODE or not GEMINI_API_KEY:
+        pdf_text = get_text_from_pdf(pdf_path)
+        if pdf_text:
+            # Return a simple summary in demo mode
+            return f"Demo mode: PDF contains approximately {len(pdf_text.split())} words. Full PDF analysis requires a Google Gemini API key."
+        return "Error extracting text from PDF."
+        
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         pdf_text = get_text_from_pdf(pdf_path)
@@ -570,14 +607,22 @@ def user_exists(email, json_file_path):
 
 
 def send_verification_code(email, code):
-    RECEIVER = email
-    server = smtplib.SMTP_SSL("smtp.googlemail.com", 465)
-    server.login(SENDER_MAIL_ID, APP_PASSWORD)
-    message = f"Subject: Your Verification Code\n\nYour verification code is: {code}"
-    server.sendmail(SENDER_MAIL_ID, RECEIVER, message)
-    server.quit()
-    st.success("Email sent successfully!")
-    return True
+    if not EMAIL_AVAILABLE:
+        st.warning("Email functionality is not available. Using demo mode with code: 123456")
+        return True
+        
+    try:
+        RECEIVER = email
+        server = smtplib.SMTP_SSL("smtp.googlemail.com", 465)
+        server.login(SENDER_MAIL_ID, APP_PASSWORD)
+        message = f"Subject: Your Verification Code\n\nYour verification code is: {code}"
+        server.sendmail(SENDER_MAIL_ID, RECEIVER, message)
+        server.quit()
+        st.success("Email sent successfully!")
+        return True
+    except Exception as e:
+        st.error(f"Failed to send email: {e}")
+        return False
 
 
 def generate_verification_code(length=6):
@@ -623,10 +668,17 @@ def signup(json_file_path="data.json"):
             else:
                 verification_code = session_state["verification_code"]
                 send_verification_code(email, verification_code)
+                
+                if not EMAIL_AVAILABLE:
+                    # In demo mode, use a fixed verification code
+                    st.info("Demo mode: Use verification code 123456")
+                    verification_code = "123456"
+                    
                 entered_code = st.text_input(
                     "Enter the verification code sent to your email:"
                 )
-                if entered_code == verification_code:
+                
+                if entered_code == verification_code or (not EMAIL_AVAILABLE and entered_code == "123456"):
                     user = create_account(
                         name, email, age, sex, password, json_file_path
                     )
